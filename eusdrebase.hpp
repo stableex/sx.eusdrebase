@@ -64,24 +64,20 @@ namespace eusd {
      * // out => "10.300000 EUSDB"
      * ```
      */
-    static asset get_amount_out( asset in )
+    static asset get_amount_out(const asset in )
     {
-        // table
-        global _glob( code, code.value );
+        if(in.symbol != EUSDC.get_symbol()) return {0, EUSDB.get_symbol() };
+
+        //global _glob( code, code.value );
         oracles _oracles( code, code.value );
 
-        const auto seg = 8;
-        auto ora = _oracles.get(seg, "eusdc: can't get oracle price");
-        auto epoch_time = _glob.begin()->epoch_time;
-        auto price = ora.price_cumulative_last / (epoch_time / ora.update_min / seg * ora.seg);
+        const auto seg = 1;
+        const auto ora = _oracles.get(seg, "eusdc: can't get oracle price");
+        //auto epoch_time = _glob.begin()->epoch_time;
+        const auto price = ora.price_cumulative_last / 120;
+        const auto amount_out = price < 1 ? in.amount / price : 0;
 
-        auto amount_out = in.amount / (price * price);
-        auto out = asset{ static_cast<int64_t>(amount_out), EUSDB.get_symbol() };
-
-        print(in, " => ", out, " @ ", price);
-       // check(false, "hi");
-
-        return out;
+        return asset{ static_cast<int64_t>(amount_out), EUSDB.get_symbol() };
     }
 
 
