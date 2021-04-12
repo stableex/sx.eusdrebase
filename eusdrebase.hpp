@@ -1,6 +1,7 @@
 #pragma once
 
 #include <eosio/asset.hpp>
+#include <eosio.token/eosio.token.hpp>
 
 namespace eusd {
 
@@ -66,18 +67,27 @@ namespace eusd {
      */
     static asset get_amount_out(const asset in )
     {
-        if(in.symbol != EUSDC.get_symbol()) return {0, EUSDB.get_symbol() };
-
         //global _glob( code, code.value );
         oracles _oracles( code, code.value );
 
-        const auto seg = 1;
+        const auto seg = 1;     //seg = 1 - short TWAP, seg = 8 - long TWAP
         const auto ora = _oracles.get(seg, "eusdc: can't get oracle price");
         //auto epoch_time = _glob.begin()->epoch_time;
         const auto price = ora.price_cumulative_last / 120;
-        const auto amount_out = price < 1 ? in.amount / price : 0;
+        asset out;
 
-        return asset{ static_cast<int64_t>(amount_out), EUSDB.get_symbol() };
+        if(in.symbol == EUSDC.get_symbol()) {
+            out = { price < 1 ? static_cast<int64_t>(in.amount * 100 / 85) : 0, EUSDB.get_symbol() };
+           // out = { price < 1 ? static_cast<int64_t>(in.amount / price) : 0, EUSDB.get_symbol() };
+        }
+
+        if(in.symbol == EUSDB.get_symbol()) {
+            out = { price > 1.05 ? static_cast<int64_t>(in.amount) : 0 , EUSDC.get_symbol() };
+            auto balance = eosio::token::get_balance(EUSDC.get_contract(), code, EUSDC.get_symbol().code());
+            out.amount = min( balance.amount, out.amount );
+        }
+
+        return out;
     }
 
 
